@@ -52,6 +52,26 @@ class EmbodimentTag(Enum):
     The Franka Emika Panda robot.
     """
 
+    FRANKA_CUSTOM = 'franka_custom'
+    """
+    The Franka Emika Panda robot.
+    """
+
+    UR5 = 'ur5'
+    """
+    The UR5 robot.
+    """
+
+    UR10 = 'ur10'
+    """
+    The UR10 robot.
+    """
+
+    RIZON4 = 'rizon4'
+    """
+    The Rizon4 robot.
+    """
+
 # Embodiment tag string: to projector index in the Action Expert Module
 EMBODIMENT_TAG_MAPPING = {
     EmbodimentTag.NEW_EMBODIMENT.value: 31,
@@ -61,6 +81,10 @@ EMBODIMENT_TAG_MAPPING = {
     EmbodimentTag.AGIBOT_GENIE1.value: 26,
     EmbodimentTag.GR1.value: 24,
     EmbodimentTag.FRANKA.value: 25,
+    EmbodimentTag.UR5.value: 32,
+    EmbodimentTag.UR10.value: 33,
+    EmbodimentTag.RIZON4.value: 34,
+    EmbodimentTag.FRANKA_CUSTOM.value: 35,
 }
 
 # Robot type to embodiment tag mapping
@@ -72,4 +96,8 @@ ROBOT_TYPE_TO_EMBODIMENT_TAG = {
     "demo_sim_franka_delta_joints": EmbodimentTag.FRANKA,
     "custom_robot_config": EmbodimentTag.NEW_EMBODIMENT,
     "fourier_gr1_arms_waist": EmbodimentTag.GR1,
+    "custom_franka_config": EmbodimentTag.FRANKA_CUSTOM,
+    "custom_ur5_config": EmbodimentTag.UR5,
+    "custom_ur10_config": EmbodimentTag.UR10,
+    "custom_rizon4_config": EmbodimentTag.RIZON4,
 }

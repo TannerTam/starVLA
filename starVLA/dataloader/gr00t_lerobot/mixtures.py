@@ -85,6 +85,49 @@ DATASET_NAMED_MIXTURES = {
 
     "arx_x5": [
         ("arx_x5", 1.0, "arx_x5"),
+
+    "franka_test":[
+        ("franka_test", 1.0, "custom_franka_config"),
+    ],
+
+    "franka_cam10":[
+        ("franka_cam10", 1.0, "custom_franka_config"),
+    ],
+
+    "franka_exclude_cam10":[
+        ("franka_exclude_cam10", 1.0, "custom_franka_config"),
+    ],
+
+    "ur5":[
+        ("ur5", 1.0, "custom_ur5_config"),
+    ],
+
+    "ur10":[
+        ("ur10", 1.0, "custom_ur10_config"),
+    ],
+
+    "rizon4":[
+        ("rizon4", 1.0, "custom_rizon4_config"),
+    ],
+
+    "custom_datasets":[
+        ("franka_cam10", 1.0, "custom_franka_config"),
+        ("franka_exclude_cam10", 1.0, "custom_franka_config"),
+        ("ur5", 1.0, "custom_ur5_config"),
+        ("ur10", 1.0, "custom_ur10_config"),
+        ("rizon4", 1.0, "custom_rizon4_config"),
+    ],
+
+    "custom_datasets_mix_libero":[
+        ("franka_cam10", 1.0, "custom_franka_config"),
+        ("franka_exclude_cam10", 1.0, "custom_franka_config"),
+        ("ur5", 1.0, "custom_ur5_config"),
+        ("ur10", 1.0, "custom_ur10_config"),
+        ("rizon4", 1.0, "custom_rizon4_config"),
+        ("libero_object_no_noops_1.0.0_lerobot", 1.0, "libero_franka"),
+        ("libero_goal_no_noops_1.0.0_lerobot", 1.0, "libero_franka"),
+        ("libero_spatial_no_noops_1.0.0_lerobot", 1.0, "libero_franka"),
+        ("libero_10_no_noops_1.0.0_lerobot", 1.0, "libero_franka"),
     ],
 
     "robotwin": [

@@ -1,7 +1,10 @@
+export NCCL_SOCKET_IFNAME=lo
+export NCCL_IB_DISABLE=1
+export NCCL_P2P_DISABLE=0
+export NCCL_DEBUG=INFO
 
-
-export NCCL_SOCKET_IFNAME=bond0
-export NCCL_IB_HCA=mlx5_2,mlx5_3
+# export NCCL_SOCKET_IFNAME=bond0
+# export NCCL_IB_HCA=mlx5_2,mlx5_3
 
 # used for check save when communication
 export NCCL_BLOCKING_WAIT=1
@@ -14,7 +17,7 @@ Framework_name=QwenOFT
 freeze_module_list=''
 base_vlm=playground/Pretrained_models/Qwen3-VL-4B-Instruct
 config_yaml=./examples/LIBERO/train_files/starvla_cotrain_libero.yaml
-libero_data_root=playground/Datasets/LEROBOT_LIBERO_DATA
+libero_data_root=/workspace/tanner/data/lerobot_format
 data_mix=libero_all
 run_root_dir=./results/Checkpoints
 run_id=1229_libero4in1_qwen3oft
@@ -29,6 +32,7 @@ mkdir -p ${output_dir}
 # mv this script to the output dir
 cp $0 ${output_dir}/
 
+export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
 
 accelerate launch \
   --config_file starVLA/config/deepseeds/deepspeed_zero2.yaml \
@@ -48,8 +52,8 @@ accelerate launch \
   --trainer.eval_interval 100 \
   --run_root_dir ${run_root_dir} \
   --run_id ${run_id} \
-  --wandb_project starVLA_Libero \
-  --wandb_entity jinhuiye \
+  --wandb_project starvla \
+  --wandb_entity tannertam \
   # --is_debug True
 
 
