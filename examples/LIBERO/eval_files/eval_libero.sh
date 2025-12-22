@@ -1,13 +1,13 @@
 #!/bin/bash
 
-cd /mnt/petrelfs/yejinhui/Projects/starVLA
-conda activate starVLA
+# cd /home/tanner/embodiedAI_ws/starVLA
+# conda activate starVLA
 
 ###########################################################################################
 # === Please modify the following paths according to your environment ===
-export LIBERO_HOME=/mnt/petrelfs/share/yejinhui/Projects/LIBERO
+export LIBERO_HOME=/home/tanner/embodiedAI_ws/LIBERO
 export LIBERO_CONFIG_PATH=${LIBERO_HOME}/libero
-export LIBERO_Python=/mnt/petrelfs/share/yejinhui/Envs/miniconda3/envs/lerobot/bin/python
+export LIBERO_Python=/home/tanner/anaconda3/envs/libero/bin/python
 
 export PYTHONPATH=$PYTHONPATH:${LIBERO_HOME} # let eval_libero find the LIBERO tools
 export PYTHONPATH=$(pwd):${PYTHONPATH} # let LIBERO find the websocket tools from main repo
@@ -16,8 +16,8 @@ export PYTHONPATH=$(pwd):${PYTHONPATH} # let LIBERO find the websocket tools fro
 host="127.0.0.1"
 base_port=5694
 unnorm_key="franka"
-your_ckpt=./results/Checkpoints/1208_libero_all_QwenPI_qwen3/checkpoints/steps_50000_pytorch_model.pt
-export DEBUG=true
+your_ckpt=/home/tanner/embodiedAI_ws/starVLA/results/Checkpoints/1218_libero_all_qwen3oft/checkpoints/steps_30000_pytorch_model.pt
+# export DEBUG=true
 
 folder_name=$(echo "$your_ckpt" | awk -F'/' '{print $(NF-2)"_"$(NF-1)"_"$NF}')
 # === End of environment variable configuration ===
@@ -26,16 +26,36 @@ folder_name=$(echo "$your_ckpt" | awk -F'/' '{print $(NF-2)"_"$(NF-1)"_"$NF}')
 LOG_DIR="logs/$(date +"%Y%m%d_%H%M%S")"
 mkdir -p ${LOG_DIR}
 
-
-task_suite_name=libero_goal
 num_trials_per_task=50
-video_out_path="results/${task_suite_name}/${folder_name}"
 
+# 定义所有要评估的task suites
+# task_suites=("libero_spatial" "libero_object" "libero_goal" "libero_10")
+task_suites=("libero_90")
 
-${LIBERO_Python} ./examples/LIBERO/eval_files/eval_libero.py \
-    --args.pretrained-path ${your_ckpt} \
-    --args.host "$host" \
-    --args.port $base_port \
-    --args.task-suite-name "$task_suite_name" \
-    --args.num-trials-per-task "$num_trials_per_task" \
-    --args.video-out-path "$video_out_path"
+# 循环运行每个task suite
+for task_suite_name in "${task_suites[@]}"; do
+    echo "=========================================="
+    echo "Starting evaluation for: $task_suite_name"
+    echo "=========================================="
+    
+    video_out_path="results/${task_suite_name}/${folder_name}"
+    
+    ${LIBERO_Python} ./examples/LIBERO/eval_files/eval_libero.py \
+        --args.pretrained-path ${your_ckpt} \
+        --args.host "$host" \
+        --args.port $base_port \
+        --args.task-suite-name "$task_suite_name" \
+        --args.num-trials-per-task "$num_trials_per_task" \
+        --args.video-out-path "$video_out_path" \
+        --args.unnorm_key $unnorm_key \
+        2>&1 | tee "${LOG_DIR}/${task_suite_name}.log"
+    
+    echo "Completed: $task_suite_name"
+    echo ""
+done
+
+echo "=========================================="
+echo "All evaluations completed!"
+echo "Results saved in: results/"
+echo "Logs saved in: ${LOG_DIR}"
+echo "=========================================="

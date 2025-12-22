@@ -53,7 +53,8 @@ class Args:
     post_process_action: bool = True
 
     job_name: str = "test"
-
+    
+    unnorm_key: str = "franka"
 
 def eval_libero(args: Args) -> None:
     logging.info(f"Arguments: {json.dumps(dataclasses.asdict(args), indent=4)}")
@@ -89,6 +90,7 @@ def eval_libero(args: Args) -> None:
         host=args.host,
         port=args.port,
         image_size=args.resize_size,
+        unnorm_key=args.unnorm_key,
     )
 
 
@@ -214,12 +216,12 @@ def eval_libero(args: Args) -> None:
             # Save a replay video of the episode
             suffix = "success" if done else "failure"
             task_segment = task_description.replace(" ", "_")
-            imageio.mimwrite(
-                pathlib.Path(args.video_out_path)
-                / f"rollout_{task_segment}_episode{episode_idx}_{suffix}.mp4",
-                [np.asarray(x) for x in replay_images],
-                fps=10,
-            )
+            # imageio.mimwrite(
+            #     pathlib.Path(args.video_out_path)
+            #     / f"rollout_{task_segment}_episode{episode_idx}_{suffix}.mp4",
+            #     [np.asarray(x) for x in replay_images],
+            #     fps=10,
+            # )
             
             full_actions = np.stack(full_actions)
             # np.save(pathlib.Path(args.video_out_path) / f"rollout_{task_segment}_episode{episode_idx}_{suffix}.npy", full_actions)
@@ -244,6 +246,26 @@ def eval_libero(args: Args) -> None:
         f"Total success rate: {float(total_successes) / float(total_episodes)}"
     )
     logging.info(f"Total episodes: {total_episodes}")
+
+    # 计算最终结果
+    final_success_rate = float(total_successes) / float(total_episodes)
+    
+    # 保存结果到JSON文件
+    results = {
+        "task_suite": args.task_suite_name,
+        "total_episodes": total_episodes,
+        "total_successes": total_successes,
+        "success_rate": final_success_rate,
+        "num_trials_per_task": args.num_trials_per_task,
+        "seed": args.seed,
+        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+    }
+    
+    results_path = pathlib.Path(args.video_out_path) / "eval_results.json"
+    with open(results_path, 'w') as f:
+        json.dump(results, f, indent=4)
+    
+    logging.info(f"Results saved to {results_path}")
 
 
 def _get_libero_env(task, resolution, seed):
