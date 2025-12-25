@@ -45,7 +45,7 @@ from starVLA.model.modules.action_model.MLP_ActionHeader import get_action_model
 from starVLA.training.trainer_utils.trainer_tools import resize_images
 from starVLA.model.modules.vggt.vggt_example import _VGGT_Interface
 
-@FRAMEWORK_REGISTRY.register("QwenOFT&VGGT")
+@FRAMEWORK_REGISTRY.register("QwenOFTandVGGT")
 class Qwenvl_OFT_VGGT(baseframework):
     """
     Multimodal vision-language-action model.
@@ -74,10 +74,12 @@ class Qwenvl_OFT_VGGT(baseframework):
         super().__init__()
 
         self.vggt_model = _VGGT_Interface()
+
         self.config = config
         self.qwen_vl_interface = get_vlm_model(config=self.config)
         # align dims --> we should put them to config or no?
         config.framework.action_model.action_hidden_dim = self.qwen_vl_interface.model.config.hidden_size
+        self.vggt_to_qwen_proj = nn.Linear(2048, self.qwen_vl_interface.model.config.hidden_size, bias=True)
         self.action_model = get_action_model(config=self.config)
 
         self.future_action_window_size = config.framework.action_model.future_action_window_size
@@ -135,18 +137,23 @@ class Qwenvl_OFT_VGGT(baseframework):
 
         # Flatten Sequence(Views) and Patches
         B_vggt, S, P, C_dim = vggt_feats.shape
-        vggt_feats_flat = vggt_feats.view(B_vggt, S * P, C_dim)
-        vggt_embeds = vggt_feats_flat.to(dtype=torch.bfloat16)
+        # import pdb; pdb.set_trace() #print s p, maxpooling
+        target_dtype = self.vggt_to_qwen_proj.weight.dtype
+        vggt_feats_flat = vggt_feats.to(dtype=target_dtype).view(B_vggt, S * P, C_dim)
+        vggt_embeds = self.vggt_to_qwen_proj(vggt_feats_flat)
+        vggt_embeds = vggt_embeds.to(dtype=torch.bfloat16)
 
         # Get Qwen embeddings
         input_ids = qwen_inputs["input_ids"]
-        qwen_token_embeds = self.qwen_vl_interface.model.model.embed_tokens(input_ids)
+        saved_input_ids = input_ids.clone()
+        qwen_token_embeds = self.qwen_vl_interface.model.language_model.embed_tokens(input_ids)
 
         # Concatenate
         inputs_embeds = torch.cat([vggt_embeds, qwen_token_embeds], dim=1)
 
         # Adjust attention mask & labels
         old_attention_mask = qwen_inputs["attention_mask"]
+        device = old_attention_mask.device
         vggt_mask = torch.ones((batch_size, S * P), device=device, dtype=old_attention_mask.dtype)
         
         new_attention_mask = torch.cat([vggt_mask, old_attention_mask], dim=1)
@@ -174,8 +181,10 @@ class Qwenvl_OFT_VGGT(baseframework):
         # Step 4: Action Expert Forward and Loss
         with torch.autocast("cuda", dtype=torch.float32):
             # 提取动作 token embedding 作为动作预测查询
-            input_ids = qwen_inputs.get("input_ids", None)
-            action_queries = self._gather_action_token_embeddings(last_hidden, input_ids, action_token_id=self.action_token_id)  # [B, chunk_len, H]
+            # input_ids = qwen_inputs.get("input_ids", None)
+            vggt_length = S * P
+            qwen_hidden = last_hidden[:, vggt_length:, :]
+            action_queries = self._gather_action_token_embeddings(qwen_hidden, saved_input_ids, action_token_id=self.action_token_id)  # [B, chunk_len, H]
             pred_actions = self.action_model.predict_action(action_queries)  # (B, chunk_len, action_dim)
 
             # 标签对齐：取最后 chunk_len 段
@@ -210,6 +219,7 @@ class Qwenvl_OFT_VGGT(baseframework):
         
         batch_images = [to_pil_preserve(example["image"]) for example in examples]  #  [B，[PLT]]
         instructions = [example["lang"] for example in examples]  # [B, str]
+        batch_size = len(batch_images)
     
         train_obs_image_size = getattr(self.config.datasets.vla_data, "image_size", None)
         if train_obs_image_size:
@@ -222,6 +232,38 @@ class Qwenvl_OFT_VGGT(baseframework):
 
         # Step 1: QWenVL input format
         qwen_inputs = self.qwen_vl_interface.build_qwenvl_inputs(images=batch_images, instructions=instructions)
+
+        # Get VGGT features, returns [B, S, P, Dim]
+        vggt_feats = self.vggt_model.get_vggt_embeddings(
+            batch_images_pil=batch_images, 
+        )
+
+        # Flatten Sequence(Views) and Patches
+        B_vggt, S, P, C_dim = vggt_feats.shape
+        target_dtype = self.vggt_to_qwen_proj.weight.dtype
+        vggt_feats_flat = vggt_feats.to(dtype=target_dtype).view(B_vggt, S * P, C_dim)
+        vggt_embeds = self.vggt_to_qwen_proj(vggt_feats_flat)
+        vggt_embeds = vggt_embeds.to(dtype=torch.bfloat16)
+
+        # Get Qwen embeddings
+        input_ids = qwen_inputs["input_ids"]
+        saved_input_ids = input_ids.clone()
+        qwen_token_embeds = self.qwen_vl_interface.model.language_model.embed_tokens(input_ids)
+
+        # Concatenate
+        inputs_embeds = torch.cat([vggt_embeds, qwen_token_embeds], dim=1)
+
+        # Adjust attention mask & labels
+        old_attention_mask = qwen_inputs["attention_mask"]
+        device = old_attention_mask.device
+        vggt_mask = torch.ones((batch_size, S * P), device=device, dtype=old_attention_mask.dtype)
+        
+        new_attention_mask = torch.cat([vggt_mask, old_attention_mask], dim=1)
+        
+        del qwen_inputs["input_ids"]
+        qwen_inputs["inputs_embeds"] = inputs_embeds
+        qwen_inputs["attention_mask"] = new_attention_mask
+
         with torch.autocast("cuda", dtype=torch.bfloat16):
             qwenvl_outputs = self.qwen_vl_interface(
                 **qwen_inputs,
@@ -235,8 +277,10 @@ class Qwenvl_OFT_VGGT(baseframework):
         # Step 4: Action Expert Forward and Loss
         with torch.autocast("cuda", dtype=torch.float32):
             # 提取动作 token embedding 作为动作预测查询
-            input_ids = qwen_inputs.get("input_ids", None)
-            action_queries = self._gather_action_token_embeddings(last_hidden, input_ids, action_token_id=self.action_token_id)  # [B, chunk_len, H]
+            vggt_length = S * P
+            qwen_hidden = last_hidden[:, vggt_length:, :]  # [B, L_qwen, H]
+            # input_ids = qwen_inputs.get("input_ids", None)
+            action_queries = self._gather_action_token_embeddings(qwen_hidden, saved_input_ids, action_token_id=self.action_token_id)  # [B, chunk_len, H]
             pred_actions = self.action_model.predict_action(action_queries)  # (B, chunk_len, action_dim)
 
         normalized_actions = pred_actions.detach().cpu().numpy()
@@ -262,6 +306,7 @@ class Qwenvl_OFT_VGGT(baseframework):
         if action_token_id is None:
             raise ValueError("action_token_id 不能为空")
 
+        # import pdb; pdb.set_trace()
         device = input_ids.device
         B, L, H = last_hidden.shape
 
