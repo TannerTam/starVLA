@@ -7,6 +7,7 @@ from typing import Optional, List
 from vggt.models.vggt import VGGT
 
 import torchvision.transforms as T
+import torch.nn.functional as F
 from PIL import Image
 
 
@@ -85,6 +86,9 @@ class _VGGT_Interface(nn.Module):
             batch_tensors.append(sample_tensor)
 
         vggt_input = torch.stack(batch_tensors)
+        
+        device = self.model.aggregator._resnet_mean.device
+        vggt_input = vggt_input.to(device)
         # 3. Model Inference (Logic from get_vggt_emds)
         # Using autocast context for mixed precision
         with torch.autocast("cuda", dtype=torch.float16):
@@ -92,7 +96,18 @@ class _VGGT_Interface(nn.Module):
                 vggt_input, # Passed the prepared 5D tensor
             )
 
-        return aggregated_tokens_list[-1]
+        features = aggregated_tokens_list[-1]
+        B, S, P, Dim = features.shape
+        features = features.reshape(B * S, P, Dim)
+        
+        # Apply pooling
+        features_permuted = features.permute(0, 2, 1)  
+        features_pooled = F.max_pool1d(features_permuted, kernel_size=10, stride=10)  
+        features_final = features_pooled.permute(0, 2, 1)  
+        
+        features_final = features_final.reshape(B, S, -1, Dim)
+        
+        return features_final
 
 
 if __name__ == "__main__":
