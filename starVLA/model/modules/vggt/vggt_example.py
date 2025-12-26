@@ -59,43 +59,38 @@ class _VGGT_Interface(nn.Module):
         """
 
         resize_transform = T.Resize((518, 518), interpolation=T.InterpolationMode.BICUBIC)
-
         batch_tensors = []
-
+        max_views = max(len(sample_images) for sample_images in batch_images_pil)  # Find max number of views
         for sample_images in batch_images_pil:
             processed_imgs = []
             for img in sample_images:
-                # Check if we should use self.vggt_transform or the local resize.
-                # Here we use the local resize_transform to match get_vggt_emds logic,
-                # but ensure it is converted to tensor if the transform doesn't do it.
-                # Assuming T.Resize returns PIL, we usually need ToTensor() or valid conversion.
-                # If self.vggt_transform includes ToTensor, we should use that, 
-                # but standard T.Resize keeps it as PIL unless composed.
-                
-                # Standard torchvision pipeline usually requires ToTensor for the model
-                # I will add ToTensor() to ensure it interacts with stack() correctly.
-                
                 img_resized = resize_transform(img)
                 img_tensor = T.functional.to_tensor(img_resized) 
-                
-                # Note: If your model expects specific normalization (mean/std), 
-                # ensure it is applied here. I am keeping it raw based on your snippet.
                 processed_imgs.append(img_tensor)
-            # Stack views -> [S, 3, 518, 518]
+            
+            # Pad if necessary to match max_views
+            num_current_views = len(processed_imgs)
+            if num_current_views < max_views:
+                # Create zero padding tensors
+                padding_tensor = torch.zeros_like(processed_imgs[0])
+                for _ in range(max_views - num_current_views):
+                    processed_imgs.append(padding_tensor)
+            
+            # Stack views -> [S, 3, 518, 518] where S = max_views
             sample_tensor = torch.stack(processed_imgs)
             batch_tensors.append(sample_tensor)
-
+        # Now all tensors have the same shape [max_views, 3, 518, 518]
         vggt_input = torch.stack(batch_tensors)
         
         device = self.model.aggregator._resnet_mean.device
         vggt_input = vggt_input.to(device)
+        
         # 3. Model Inference (Logic from get_vggt_emds)
         # Using autocast context for mixed precision
         with torch.autocast("cuda", dtype=torch.float16):
             aggregated_tokens_list, _ = self.model.aggregator(
                 vggt_input, # Passed the prepared 5D tensor
             )
-
         features = aggregated_tokens_list[-1]
         B, S, P, Dim = features.shape
         features = features.reshape(B * S, P, Dim)
