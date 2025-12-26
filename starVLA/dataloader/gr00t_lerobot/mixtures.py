@@ -183,6 +183,18 @@ DATASET_NAMED_MIXTURES = {
         ("turn_switch", 1.0, "robotwin"),
     ],
 
+    "custom_datasets_mix_libero_with_DH":[
+        ("franka_cam10", 1.0, "custom_franka_config"),
+        ("franka_exclude_cam10", 1.0, "custom_franka_config"),
+        ("ur5", 1.0, "custom_ur5_config"),
+        ("ur10", 1.0, "custom_ur10_config"),
+        ("rizon4", 1.0, "custom_rizon4_config"),
+        ("libero_object_lerobot_with_DH", 1.0, "libero_franka"),
+        ("libero_goal_lerobot_with_DH", 1.0, "libero_franka"),
+        ("libero_spatial_lerobot_with_DH", 1.0, "libero_franka"),
+        ("libero_10_lerobot_with_DH", 1.0, "libero_franka"),
+    ],
+
     "robotwin_task1": [
         ("adjust_bottle", 1.0, "robotwin"),
     ],
