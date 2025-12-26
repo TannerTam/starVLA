@@ -20,15 +20,14 @@ import torch.nn as nn
 
 class _VGGT_Interface(nn.Module):
 
-    def __init__(self):
+    def __init__(self, model_path: str = "./playground/Pretrained_models/VGGT-1B"):
         """
-        Initialize the Qwen3-VL wrapper.
-        Following https://huggingface.co/Qwen/Qwen3-VL-4B-Instruct
-
+        Initialize the VGGT wrapper.
+        Load VGGT from local path instead of HuggingFace Hub.
         """
         super().__init__()
 
-        model = VGGT.from_pretrained("facebook/VGGT-1B")
+        model = VGGT.from_pretrained(model_path)
         self.model = model
 
 
