@@ -30,3 +30,5 @@ diffusers
 timm
 tyro
 websockets
+
+git+https://github.com/facebookresearch/vggt.git
