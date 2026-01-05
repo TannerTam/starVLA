@@ -85,6 +85,7 @@ DATASET_NAMED_MIXTURES = {
 
     "arx_x5": [
         ("arx_x5", 1.0, "arx_x5"),
+    ],
 
     "franka_test":[
         ("franka_test", 1.0, "custom_franka_config"),
