@@ -207,4 +207,21 @@ DATASET_NAMED_MIXTURES = {
         ("LEROBOT_LIBERO_DATA/libero_10_no_noops_1.0.0_lerobot", 1.0, "libero_franka"),
         # ("OXE_LEROBOT_DATASET/bridge_orig_1.0.0_lerobot", 1.0, "oxe_bridge"),
     ],
+
+    "libero_plus":[
+        ("libero_plus_lerobot", 1.0, "libero_franka"),
+    ],
+
+    "libero_plus_with_DH":[
+        ("libero_plus_with_DH", 1.0, "libero_franka"),
+    ],
+
+    "custom_datasets_mix_libero_plus":[
+        ("libero_plus_lerobot", 1.0, "libero_franka"),
+        ("franka_cam10", 1.0, "custom_franka_config"),
+        ("franka_exclude_cam10", 1.0, "custom_franka_config"),
+        ("ur5", 1.0, "custom_ur5_config"),
+        ("ur10", 1.0, "custom_ur10_config"),
+        ("rizon4", 1.0, "custom_rizon4_config"),
+    ],    
 }
