@@ -20,8 +20,7 @@ import torch.nn as nn
 
 class _VGGT_Interface(nn.Module):
 
-    def __init__(self, model_path: str = "./playground/Pretrained_models/VGGT-1B", 
-                 img_size: int = 256, patch_size: int = 32):
+    def __init__(self, model_path: str = "./playground/Pretrained_models/VGGT-1B"):
         """
         Initialize the VGGT wrapper.
         Load VGGT from local path instead of HuggingFace Hub.
@@ -29,15 +28,7 @@ class _VGGT_Interface(nn.Module):
         super().__init__()
 
         model = VGGT.from_pretrained(model_path)
-        self.model = VGGT(
-            img_size=img_size,
-            patch_size=patch_size,
-            enable_camera=False,
-            enable_point=False,
-            enable_depth=False,
-            enable_track=False
-        )
-
+        self.model = model
 
     def forward(
         self,
@@ -66,7 +57,7 @@ class _VGGT_Interface(nn.Module):
         """
 
         # resize_transform = T.Resize((518, 518), interpolation=T.InterpolationMode.BICUBIC)
-        resize_transform = T.Resize((256, 256), interpolation=T.InterpolationMode.BICUBIC)
+        resize_transform = T.Resize((252, 252), interpolation=T.InterpolationMode.BICUBIC)
         batch_tensors = []
         max_views = max(len(sample_images) for sample_images in batch_images_pil)  # Find max number of views
         for sample_images in batch_images_pil:
@@ -100,17 +91,17 @@ class _VGGT_Interface(nn.Module):
                 vggt_input, # Passed the prepared 5D tensor
             )
         features = aggregated_tokens_list[-1]
-        # B, S, P, Dim = features.shape
-        # features = features.reshape(B * S, P, Dim)
+        B, S, P, Dim = features.shape
+        features = features.reshape(B * S, P, Dim)
         
-        # # Apply pooling
-        # features_permuted = features.permute(0, 2, 1)  
-        # features_pooled = F.max_pool1d(features_permuted, kernel_size=10, stride=10)  
-        # features_final = features_pooled.permute(0, 2, 1)  
+        # Apply pooling
+        features_permuted = features.permute(0, 2, 1)  
+        features_pooled = F.max_pool1d(features_permuted, kernel_size=3, stride=3)  
+        features_final = features_pooled.permute(0, 2, 1)  
         
-        # features_final = features_final.reshape(B, S, -1, Dim)
+        features_final = features_final.reshape(B, S, -1, Dim)
         
-        return features
+        return features_final
 
 
 if __name__ == "__main__":
